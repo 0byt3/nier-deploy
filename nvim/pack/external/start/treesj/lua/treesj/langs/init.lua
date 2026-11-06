@@ -1,0 +1,54 @@
+local M = {}
+
+M.configured_langs = {
+  'javascript',
+  'typescript',
+  'lua',
+  'html',
+  'json',
+  'jsonc',
+  'json5',
+  'vue',
+  'css',
+  'scss',
+  'tsx',
+  'perl',
+  'php',
+  'php_only',
+  'ruby',
+  'go',
+  'java',
+  'pug',
+  'svelte',
+  'rust',
+  'python',
+  'starlark',
+  'r',
+  'cpp',
+  'c',
+  'c_sharp',
+  'toml',
+  'yaml',
+  'nix',
+  'kotlin',
+  'bash',
+  'zsh',
+  'sql',
+  'dart',
+  'elixir',
+  'haskell',
+  'zig',
+  'julia',
+  'terraform',
+  'typst',
+  'qml',
+  'qmljs',
+}
+
+M.presets = {}
+
+for _, lang in ipairs(M.configured_langs) do
+  M.presets[lang] = require('treesj.langs.' .. lang)
+end
+
+return M

@@ -1,0 +1,140 @@
+--[[ test format ]]
+
+-- RESULT OF JOIN (node "table_constructor" (list), preset default)
+local list = { 'one', 'two', 'three', { 'four', 'five' } }
+
+-- RESULT OF SPLIT (node "table_constructor" (list), preset default)
+local list = {
+  'one',
+  'two',
+  'three',
+  { 'four', 'five' },
+}
+
+-- RESULT OF JOIN (node "table_constructor" (dict), preset default)
+local dict = { one = 'one', two = 'two', three = 'three', four = { 'four', 'five' } }
+
+-- RESULT OF SPLIT (node "table_constructor" (dict), preset default)
+local dict = {
+  one = 'one',
+  two = 'two',
+  three = 'three',
+  four = { 'four', 'five' },
+}
+
+-- RESULT OF JOIN (node "table_constructor" (mixed type), preset default)
+local mixed = { 'one', two = 'two', 'three', dict, four = { 'four', 'five' } }
+
+-- RESULT OF SPLIT (node "table_constructor" (mixed type), preset default)
+local mixed = {
+  'one',
+  two = 'two',
+  'three',
+  dict,
+  four = { 'four', 'five' },
+}
+
+-- RESULT OF JOIN (node "arguments", preset default)
+print('one', 'two')
+
+-- RESULT OF SPLIT (node "arguments", preset default)
+print(
+  'one',
+  'two'
+)
+
+-- RESULT OF JOIN (node "arguments", preset default)
+local function test(a, b, c)
+  print(a, b, c)
+end
+
+-- RESULT OF SPLIT (node "arguments", preset default)
+local function test(
+  a,
+  b,
+  c
+)
+  print(a, b, c)
+end
+
+-- RESULT OF JOIN (node "block" in if_statement), preset default
+if true then print(123) local a = b print(a) end
+
+-- RESULT OF SPLIT (node "block" in if_statement), preset default
+if true then
+  print(123)
+  local a = b
+  print(a)
+end
+
+-- RESULT OF JOIN (node "block" in function_declaration), preset default
+function foo () local test = { one = 'one', two = 'two' } return test end
+
+-- RESULT OF SPLIT (node "block" in function_declaration), preset default
+function foo ()
+  local test = { one = 'one', two = 'two' }
+  return test
+end
+
+-- RESULT OF JOIN (node "block" in function_declaration contains nested function)
+local function foo() local test = function() print(123) local function ins() return 'bar' end return 'foo' end return test() end
+
+-- RESULT OF RECURSIVE SPLIT (node "block" in function_declaration contains nested functions)
+local function foo()
+  local test = function()
+    print(123)
+    local function ins()
+      return 'bar'
+    end
+    return 'foo'
+  end
+  return test()
+end
+
+-- RESULT OF JOIN (node "table_constructor" with nested "block")
+local nest = { one = 'one', two = function() return 'two' end, three = 'three' }
+
+-- RESULT OF RECURSIVE SPLIT (node "table_constructor" with nested "block")
+local nest = {
+  one = 'one',
+  two = function()
+    return 'two'
+  end,
+  three = 'three',
+}
+
+-- RESULT OF JOIN (node "table_constructor" with nested "table_constructor")
+local nest = { one = 'one', two = { one = 'one', two = { one = 'one' } } }
+
+-- RESULT OF RECURSIVE SPLIT (node "table_constructor" with nested "table_constructor")
+local nest = {
+  one = 'one',
+  two = {
+    one = 'one',
+    two = {
+      one = 'one',
+    },
+  },
+}
+
+-- RESULT OF JOIN (node "table_constructor" is empty, preset default)
+local empty = {}
+
+-- RESULT OF SPLIT (node "table_constructor" is empty, preset default)
+local empty = {
+}
+
+-- RESULT OF JOIN (node "table_constructor" is empty, preset with format_empty_node = false)
+local empty = {}
+
+-- RESULT OF SPLIT (node "table_constructor" is empty, preset with format_empty_node = false)
+local empty = {
+}
+
+-- RESULT OF JOIN (node "table_constructor" with empty table, preset default
+local myvar = { a = 'something', b = {} }
+-- RESULT OF SPLIT (node "table_constructor" with empty table, preset default
+local myvar = {
+  a = 'something',
+  b = {},
+}

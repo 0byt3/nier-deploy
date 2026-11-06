@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <title></title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link href="css/style.css" rel="stylesheet">
+</head>
+
+<body>
+  <!-- RESULT OF JOIN (node "start_tag", preset default) -->
+    <p class="paragraph" id="general_text">Text</p>
+  <!-- RESULT OF SPLIT (node "start_tag", preset default) -->
+    <p
+      class="paragraph"
+      id="general_text"
+    >Text</p>
+
+  <!-- RESULT OF JOIN (node "self_closing_tag", preset default) -->
+    <img src="./logo.jpg" alt="pretty kitty"/>
+  <!-- RESULT OF SPLIT (node "self_closing_tag", preset default) -->
+    <img
+      src="./logo.jpg"
+      alt="pretty kitty"
+    />
+
+  <!-- RESULT OF JOIN (node "element", preset default) -->
+    <span class="text" id="span">Text</span>
+  <!-- RESULT OF SPLIT (node "element", preset default) -->
+    <span class="text" id="span">
+      Text
+    </span>
+
+  <!-- RESULT OF JOIN (node "element" is empty, preset default) -->
+    <span></span>
+
+  <!-- RESULT OF SPLIT (node "element" is empty, preset default) -->
+    <span>
+    </span>
+
+  <!-- RESULT OF JOIN (node "start_tag" is empty, preset default) -->
+    <p></p>
+
+  <!-- RESULT OF SPLIT (node "start_tag" is empty, preset default) -->
+    <p
+    ></p>
+
+  <!-- RESULT OF JOIN (node "self_closing_tag" is empty, preset default) -->
+    <input/>
+
+  <!-- RESULT OF SPLIT (node "self_closing_tag" is empty, preset default) -->
+    <input
+    />
+
+  <!-- RESULT OF JOIN (node "element" is empty, preset witn format_empty_node = false) -->
+    <span></span>
+
+  <!-- RESULT OF SPLIT (node "element" is empty, preset witn format_empty_node = false) -->
+    <span
+    ></span>
+
+  <!-- RESULT OF JOIN (node "start_tag" is empty, preset witn format_empty_node = false) -->
+    <p></p>
+
+  <!-- RESULT OF SPLIT (node "start_tag" is empty, preset witn format_empty_node = false) -->
+    <p
+    ></p>
+
+  <!-- RESULT OF JOIN (node "self_closing_tag" is empty, preset witn format_empty_node = false) -->
+    <input/>
+
+  <!-- RESULT OF SPLIT (node "self_closing_tag" is empty, preset witn format_empty_node = false) -->
+    <input
+    />
+          
+  <!-- result of JOIN (node 'start_tag' with last_indent = 'inner') -->
+    <button class="button" id="id"></button>
+  <!-- result of SPLIT (node 'start_tag' with last_indent = 'inner') -->
+    <button
+      class="button"
+      id="id"></button>
+
+  <!-- result of JOIN (node 'self_closing_tag' with last_indent = 'inner') -->
+    <button class="button" id="id"/>
+  <!-- result of SPLIT (node 'self_closing_tag' with last_indent = 'inner') -->
+    <button
+      class="button"
+      id="id"/>
+</body>
+
+</html>

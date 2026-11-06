@@ -1,0 +1,339 @@
+local M = {}
+
+M._initialized = false
+
+---@class TinyCmdlineAdapters
+M.adapters = {
+  ---@type fun(): nil
+  blink = function()
+    local ok, menu = pcall(require, "blink.cmp.completion.windows.menu")
+    if ok and menu.win and menu.win:is_open() then
+      pcall(menu.update_position)
+    end
+  end,
+}
+
+---@class TinyCmdlineWidthConfig
+---@field value string|integer Width: "60%" = fraction of editor columns, integer = absolute columns
+---@field min integer Minimum width in columns
+---@field max integer Maximum width in columns
+
+---@class TinyCmdlinePositionConfig
+---@field x string|integer Horizontal position: "50%" = center, integer = absolute columns from left
+---@field y string|integer Vertical position: "50%" = center, integer = absolute rows from top
+
+---@class TinyCmdlineTitleFormat
+---@field type string|string[]|nil getcmdtype() value(s) to match; nil = any
+---@field pattern string|string[]|nil Lua pattern(s) matched against getcmdline(); nil = always
+---@field title string Title text to display (include leading/trailing spaces as desired)
+
+---@class TinyCmdlineTitleConfig
+---@field enabled boolean
+---@field pos "left"|"center"|"right"
+---@field formats TinyCmdlineTitleFormat[] Evaluated in order; first match wins
+
+---@class TinyCmdlineConfig
+---@field width TinyCmdlineWidthConfig
+---@field position TinyCmdlinePositionConfig
+---@field border string|nil nil = inherit vim.o.winborder at setup() time
+---@field menu_col_offset integer Completion menu offset from the window's left inner edge
+---@field native_types string[] Types shown at the bottom instead of centered (e.g. "/", "?")
+---@field title TinyCmdlineTitleConfig
+---@field on_reposition fun()|nil Called after every reposition
+M.config = {
+  width = {
+    value = "60%",
+    min = 40,
+    max = 80,
+  },
+  position = {
+    x = "50%",
+    y = "50%",
+  },
+  border = nil,
+  menu_col_offset = 3,
+  native_types = { "/", "?" },
+  title = {
+    enabled = false,
+    pos = "center",
+    -- evaluated in order; first match wins. Last entry is the fallback.
+    formats = {
+      { type = ":", pattern = { "^%s*lua%s+", "^%s*lua%s*=", "^%s*=" }, title = " Lua " },
+      { type = ":", pattern = "^%s*!",          title = " Shell " },
+      { type = ":", pattern = "^%s*he?l?p?%s+", title = " Help " },
+      { type = "/",                             title = " Search " },
+      { type = "?",                             title = " Search " },
+      { type = "=",                             title = " Expression " },
+      { type = "@",                             title = " Input " },
+      { type = ">",                             title = " Debug " },
+      {                                         title = " CmdLine " },
+    },
+  },
+  on_reposition = nil,
+}
+
+-- "60%" -> fraction of available; integer -> absolute
+local function parse_dimension(value, available)
+  if type(value) == "string" then
+    return math.floor(available * tonumber(value:match("^(%d+)%%$")) / 100)
+  end
+  return math.floor(value)
+end
+
+---@param content_height integer
+---@return integer width, integer row, integer col, integer b
+local function geometry(content_height)
+  local cols, lines = vim.o.columns, vim.o.lines
+  local b = M.config.border == "none" and 0 or 1
+  local width = math.max(
+    M.config.width.min,
+    math.min(M.config.width.max, parse_dimension(M.config.width.value, cols))
+  )
+  width = math.min(width, cols - b * 2)
+
+  local row = math.max(0, parse_dimension(M.config.position.y, lines - content_height - b * 2))
+  local col = math.max(0, parse_dimension(M.config.position.x, cols - width - b * 2))
+  return width, row, col, b
+end
+
+local cmdline_type = nil ---@type string|nil
+local original_ui_cmdline_pos = nil ---@type table|nil
+local cmd_win_saved = nil ---@type table|nil
+local ui2 = nil ---@type table|nil
+local applied_title = nil ---@type string|nil
+
+local function type_matches(filter, t)
+  if filter == nil then
+    return true
+  end
+  if type(filter) == "string" then
+    return filter == t
+  end
+  return vim.tbl_contains(filter, t)
+end
+
+---@return string|nil
+local function compute_title()
+  local cfg = M.config.title
+  if not cfg or not cfg.enabled or not cmdline_type then
+    return nil
+  end
+  local cmdline = vim.fn.getcmdline() or ""
+  for _, fmt in ipairs(cfg.formats or {}) do
+    if type_matches(fmt.type, cmdline_type) then
+      local patterns = fmt.pattern
+      if patterns == nil then
+        return fmt.title
+      end
+      if type(patterns) == "string" then
+        patterns = { patterns }
+      end
+      for _, p in ipairs(patterns) do
+        if cmdline:match(p) then
+          return fmt.title
+        end
+      end
+    end
+  end
+  return nil
+end
+
+local function set_cmdheight_0()
+  vim._with({ noautocmd = true, o = { splitkeep = "screen" } }, function()
+    vim.o.cmdheight = 0
+  end)
+end
+
+local function get_cmd_win()
+  if not ui2 then
+    local ok, mod = pcall(require, "vim._core.ui2")
+    if not ok then
+      return nil
+    end
+    ui2 = mod
+  end
+  local win = ui2.wins and ui2.wins.cmd
+  return (win and vim.api.nvim_win_is_valid(win)) and win or nil
+end
+
+local function reposition()
+  if not cmdline_type then
+    return
+  end
+  local win = get_cmd_win()
+  if not win then
+    return
+  end
+
+  local current = vim.api.nvim_win_get_config(win)
+
+  -- saved once per session and restored on CmdlineLeave so post-command messages render at the bottom
+  if not cmd_win_saved then
+    cmd_win_saved = {
+      relative = current.relative,
+      anchor = current.anchor,
+      col = current.col,
+      row = current.row,
+      width = current.width,
+      border = current.border,
+    }
+    vim.wo[win].winhighlight = "Normal:TinyCmdlineNormal,FloatBorder:TinyCmdlineBorder,FloatTitle:TinyCmdlineTitle"
+  end
+
+  local content_height = math.max(1, vim.api.nvim_win_get_height(win))
+
+  if vim.tbl_contains(M.config.native_types, cmdline_type) then
+    local target_row = math.max(0, vim.o.lines - content_height)
+    if
+      current.relative ~= "editor"
+      or current.row ~= target_row
+      or current.col ~= 0
+      or current.width ~= vim.o.columns
+    then
+      pcall(vim.api.nvim_win_set_config, win, {
+        relative = "editor",
+        row = target_row,
+        col = 0,
+        width = vim.o.columns,
+        border = "none",
+      })
+    end
+    vim.g.ui_cmdline_pos = original_ui_cmdline_pos
+    return
+  end
+
+  local width, row, col, b = geometry(content_height)
+  local title = compute_title()
+  local borderless = M.config.border == "none" or M.config.border == nil
+  if
+    current.relative ~= "editor"
+    or current.row ~= row
+    or current.col ~= col
+    or current.width ~= width
+    or applied_title ~= title
+  then
+    local cfg = {
+      relative = "editor",
+      row = row,
+      col = col,
+      width = width,
+      border = M.config.border,
+    }
+    if title and title ~= "" and not borderless then
+      cfg.title = title
+      cfg.title_pos = M.config.title and M.config.title.pos or "left"
+    end
+    pcall(vim.api.nvim_win_set_config, win, cfg)
+    applied_title = title
+  end
+  vim.g.ui_cmdline_pos = { row + content_height + b * 2, col + b + M.config.menu_col_offset } -- blink.cmp / nvim-cmp anchor
+end
+
+local wrapped = false
+local function wrap_cmdline_show()
+  if wrapped then
+    return
+  end
+  local ok, cmdline = pcall(require, "vim._core.ui2.cmdline")
+  if not ok then
+    return
+  end
+  local orig = cmdline.cmdline_show
+  cmdline.cmdline_show = function(...)
+    local r = orig(...)
+    if not cmdline_type then
+      return r
+    end
+
+    -- search types need cmdheight=1 for stable IncSearch rendering
+    local is_search = cmdline_type == "/" or cmdline_type == "?"
+    if not is_search and not vim.tbl_contains(M.config.native_types, cmdline_type) then
+      set_cmdheight_0()
+    end
+    reposition()
+    return r
+  end
+  wrapped = true
+end
+
+local function wrap_and_reposition()
+  wrap_cmdline_show()
+  reposition()
+end
+
+---@param opts TinyCmdlineConfig?
+function M.setup(opts)
+  if M._initialized then
+    return
+  end
+  M._initialized = true
+
+  if vim.fn.has("nvim-0.12") == 0 then
+    vim.notify("tiny-cmdline.nvim requires Neovim >= 0.12", vim.log.levels.WARN)
+    return
+  end
+
+  vim.api.nvim_set_hl(0, "TinyCmdlineNormal", { link = "MsgArea", default = true })
+  vim.api.nvim_set_hl(0, "TinyCmdlineBorder", { link = "FloatBorder", default = true })
+  vim.api.nvim_set_hl(0, "TinyCmdlineTitle", { link = "FloatTitle", default = true })
+
+  original_ui_cmdline_pos = vim.g.ui_cmdline_pos
+  cmd_win_saved = nil
+  M.config = vim.tbl_deep_extend("force", M.config, opts or {})
+  if M.config.border == nil then
+    local wb = vim.o.winborder
+    M.config.border = wb ~= "" and wb or "rounded"
+  end
+
+  local group = vim.api.nvim_create_augroup("tiny-cmdline", { clear = true })
+
+  vim.api.nvim_create_autocmd("CmdlineEnter", {
+    group = group,
+    callback = function()
+      cmdline_type = vim.fn.getcmdtype()
+    end,
+  })
+
+  vim.api.nvim_create_autocmd("CmdlineLeave", {
+    group = group,
+    callback = function()
+      cmdline_type = nil
+      applied_title = nil
+      vim.g.ui_cmdline_pos = original_ui_cmdline_pos
+
+      local win = get_cmd_win()
+      if win and cmd_win_saved then
+        -- restore original position so post-command messages render at the bottom
+        pcall(vim.api.nvim_win_set_config, win, cmd_win_saved)
+        cmd_win_saved = nil
+      end
+
+      -- defer so ui2's OptionSet doesn't re-bump cmdheight after leaving search/native types
+      vim.schedule(set_cmdheight_0)
+    end,
+  })
+
+  vim.api.nvim_create_autocmd("FileType", {
+    group = group,
+    pattern = "cmd",
+    callback = function()
+      vim.schedule(wrap_and_reposition)
+    end,
+  })
+
+  vim.api.nvim_create_autocmd({ "VimResized", "TabEnter" }, {
+    group = group,
+    callback = function()
+      vim.schedule(function()
+        reposition()
+        if M.config.on_reposition then
+          M.config.on_reposition()
+        end
+      end)
+    end,
+  })
+
+  vim.schedule(wrap_and_reposition)
+end
+
+return M

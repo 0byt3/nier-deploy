@@ -1,0 +1,89 @@
+# GitHub plugins cloned to ~/.local/share/nvim/plugins/<name>
+# and copied to ~/.config/nvim/pack/external/start/<name> when the revision changes.
+[
+  {
+    name: "tiny-cmdline.nvim"
+    repository: "https://github.com/rachartier/tiny-cmdline.nvim.git"
+    branch: "main"
+  }
+  {
+    name: "blink.cmp"
+    repository: "https://github.com/Saghen/blink.cmp.git"
+    branch: "v1"
+  }
+  {
+    name: "modicator.nvim"
+    repository: "https://github.com/mawkler/modicator.nvim.git"
+    branch: "main"
+  }
+  {
+    name: "lualine.nvim"
+    repository: "https://github.com/nvim-lualine/lualine.nvim.git"
+    branch: "master"
+  }
+  {
+    name: "treesj"
+    repository: "https://github.com/Wansmer/treesj.git"
+    branch: "main"
+  }
+  {
+    name: "nvim-treesitter"
+    repository: "https://github.com/nvim-treesitter/nvim-treesitter.git"
+    branch: "main"
+  }
+  {
+    name: "nvim-hlslens"
+    repository: "https://github.com/kevinhwang91/nvim-hlslens.git"
+    branch: "main"
+  }
+  {
+    name: "nvim-chainsaw"
+    repository: "https://github.com/chrisgrieser/nvim-chainsaw.git"
+    branch: "main"
+  }
+  {
+    name: "tabout.nvim"
+    repository: "https://github.com/abecodes/tabout.nvim.git"
+    branch: "master"
+  }
+  {
+    name: "which-key.nvim"
+    repository: "https://github.com/folke/which-key.nvim.git"
+    branch: "main"
+  }
+  {
+    name: "trouble.nvim"
+    repository: "https://github.com/folke/trouble.nvim.git"
+    branch: "main"
+  }
+  {
+    name: "plenary.nvim"
+    repository: "https://github.com/nvim-lua/plenary.nvim.git"
+    branch: "master"
+  }
+  {
+    name: "telescope.nvim"
+    repository: "https://github.com/nvim-telescope/telescope.nvim.git"
+    branch: "master"
+  }
+  {
+    name: "telescope-ui-select.nvim"
+    repository: "https://github.com/nvim-telescope/telescope-ui-select.nvim.git"
+    branch: "master"
+  }
+  {
+    name: "oil.nvim"
+    repository: "https://github.com/stevearc/oil.nvim.git"
+    branch: "master"
+  }
+  {
+    name: "conform.nvim"
+    repository: "https://github.com/stevearc/conform.nvim.git"
+    branch: "master"
+  }
+  {
+    name: "nvim-lint"
+    repository: "https://github.com/mfussenegger/nvim-lint.git"
+    branch: "master"
+  }
+]
