@@ -30,6 +30,13 @@ command() {
 }
 as_root() {
   case "$*" in
+    'pacman -S --needed '*)
+      [[ $OMARCHY_TEST_PRESENT == 1 ]] || exit 1
+      [[ $* == "pacman -S --needed ${pacman_packages[*]}" ]] || exit 1
+      [[ $# == $((${#pacman_packages[@]} + 3)) ]] || exit 1
+      printf '%s\n' "$*" >> "$ACTION_LOG"
+      if [[ $PACKAGE_RESULT == 0 && " ${pacman_packages[*]} " == *' nier-desktop '* ]]; then package_installed=1; fi
+      return "$PACKAGE_RESULT" ;;
     'pacman -Syu --needed '*)
       [[ $OMARCHY_TEST_PRESENT == 0 ]] || exit 1
       [[ $* == "pacman -Syu --needed ${pacman_packages[*]}" ]] || exit 1
@@ -45,12 +52,6 @@ omarchy() {
     'update -y')
       echo 'omarchy update -y' >> "$ACTION_LOG"
       return "$UPDATE_RESULT" ;;
-    'pkg add '*)
-      [[ $* == "pkg add ${pacman_packages[*]}" ]] || exit 1
-      [[ $# == $((${#pacman_packages[@]} + 2)) ]] || exit 1
-      echo "omarchy $*" >> "$ACTION_LOG"
-      if [[ $PACKAGE_RESULT == 0 && " ${pacman_packages[*]} " == *' nier-desktop '* ]]; then package_installed=1; fi
-      return "$PACKAGE_RESULT" ;;
     *) echo "Unexpected Omarchy command: $*" >&2; exit 1 ;;
   esac
 }
@@ -83,7 +84,7 @@ RUNNER
 export HOME="$stage/home" ACTION_LOG="$stage/actions.log"
 export OMARCHY_TEST_PRESENT=1 UPDATE_RESULT=0 PACKAGE_RESULT=0 REMOVE_RESULT=0 QUERY_RESULT=0
 install_packages="${pacman_packages[*]}"
-install_command="omarchy pkg add $install_packages"
+install_command="pacman -S --needed $install_packages"
 apps="$HOME/.local/share/applications"
 mkdir -p "$apps"
 touch "$HOME/cliamp-installed"

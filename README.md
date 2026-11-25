@@ -99,10 +99,12 @@ After enabling the repository, Omarchy systems run `omarchy update -y` through
 the canonical update flow (snapshots, keyrings, migrations and boot checks).
 Setup initializes Omarchy's packaged environment bootstrap for SSH/noninteractive
 invocations. It never bypasses Omarchy 4.5's direct-full-upgrade guard.
-Setup then calls `omarchy pkg add "${pacman_packages[@]}"`. The helper manages
-sudo, skips installation when all targets are already installed, and verifies
-each package afterward. Names are unqualified because the helper checks them
-with `pacman -Q`.
+Setup then calls `sudo pacman -S --needed "${pacman_packages[@]}"` interactively.
+This permits approving the removal of stable `neovim` when installing
+`neovim-nightly` in the same transaction. Answer `y` to that conflict-removal
+prompt and approve the package transaction. Omarchy’s `pkg add` helper forces
+`--noconfirm`, which declines conflict removal, so setup uses pacman directly
+for this transaction after the canonical Omarchy update.
 Plain Arch systems use `sudo pacman -Syu --needed "${pacman_packages[@]}"`.
 
 The explicit array contains `blesh`, `neovim-nightly`, `nier-desktop`,
@@ -121,8 +123,8 @@ satisfying Omarchy 4.5's `omarchy-nvim` versioned dependency.
 Stable Neovim is never uninstalled in a separate step. If nightly is unavailable
 or the transaction fails, setup stops before applying shell configuration.
 Repeated runs skip reinstalling up-to-date packages while still checking for
-system upgrades. Omarchy's installer uses `--noconfirm --needed`; the plain Arch
-path retains pacman's confirmation prompts. The selected repository must
+system upgrades. Both paths retain pacman's confirmation prompts and use
+`--needed`. The selected repository must
 publish the Nier packages listed in the array, including `nier-desktop` for the
 final shell setup step.
 Hyprland loader setup is handled by `nier-desktop`'s package install/upgrade
@@ -160,7 +162,7 @@ replacement of stale repository configuration, backups, repeated runs, URL
 changes, wrong-key rejection, database tampering, and unreachable-default behavior.
 No client host or Omarchy VM configuration was changed during these tests.
 `tests/setup-packages.sh` verifies the explicit package array (without the
-OneDrive dependency as a direct target), Omarchy installer routing, the plain
+OneDrive dependency as a direct target), Omarchy update and interactive pacman routing, the plain
 Arch fallback, selected removals, preservation of unrelated apps,
 repeat runs, and failure propagation before shell
 application with mocked commands. Hyprland package integration has separate

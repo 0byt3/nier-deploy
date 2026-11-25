@@ -2,7 +2,7 @@
 # Enable the signed Nier repository, install tools, and apply desktop/shell setup.
 set -euo pipefail
 
-# Maintain installation targets here. Use unqualified names for omarchy pkg add.
+# Maintain installation targets here.
 # onedrive-abraunegg is installed as a dependency of onedrive-quickshell.
 readonly -a pacman_packages=(
     blesh
@@ -37,7 +37,7 @@ With noninteractive input, uses $default_url.
 Downloads and verifies the public key and database, trusts the pinned key,
 and enables [nier] with package and database signatures required.
 Performs a full system upgrade and installs the packages in pacman_packages
-using omarchy pkg add (pacman on plain Arch), including nier-desktop itself.
+using pacman, including nier-desktop itself. On Omarchy, runs its updater first.
 OneDrive's client is installed
 as a dependency of onedrive-quickshell. The list also includes Nushell.
 Removes cliamp and the Basecamp, Google Contacts/Maps/Messages/Photos, HEY,
@@ -149,7 +149,9 @@ if command -v omarchy >/dev/null; then
     # Omarchy 4.5 guards direct full upgrades: use its snapshots, migrations,
     # update lock and restart handling before installing additional packages.
     omarchy update -y
-    omarchy pkg add "${pacman_packages[@]}"
+    # omarchy pkg add forces --noconfirm, which declines conflict removal.
+    # Keep pacman's prompt so the user can approve replacing stable Neovim.
+    as_root pacman -S --needed "${pacman_packages[@]}"
 else
     as_root pacman -Syu --needed "${pacman_packages[@]}"
 fi
