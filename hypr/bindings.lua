@@ -71,7 +71,6 @@ hl.unbind("CTRL + SPACE") -- Direct input for the terminal prefix
 hl.unbind("CTRL + SHIFT + semicolon") -- Zoom in (JIS + key)
 
 -- tiling (stock tiling.lua)
-hl.unbind("SUPER + W") -- Close window
 hl.unbind("CTRL + ALT + DELETE") -- Close all windows
 hl.unbind("SUPER + P") -- Pseudo window
 hl.unbind("SUPER + CTRL + F") -- Tiled full screen
