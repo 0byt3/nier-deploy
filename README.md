@@ -4,12 +4,56 @@ Deployment scripts for configuring the Nier pacman repository and installing
 Nier packages on Arch Linux and Omarchy clients. Shared desktop tooling for
 Nier widgets, themes, and tools belongs in the sibling `nier-desktop/` project.
 
-The current `setup.sh` configures repository access, installs Neovim nightly,
-PowerShell, and Nushell, and runs `nier shell apply --prompt` for the current
-user. Install `nier-desktop` first (3.0.0-20 or newer automatically adds the Nier
-Hyprland loader to the current user's config and `/etc/skel` during installation),
-then run setup as the intended desktop user without sudo. The script requests
+The current `setup.sh` configures repository access, installs the packages in its
+`pacman_packages` Bash array, and runs `nier shell apply --prompt` for the current
+user. Setup installs `nier-desktop` itself (3.0.0-20 or newer automatically adds the Nier
+Hyprland loader to the current user's config and `/etc/skel` during installation).
+You do not need `nier-desktop` installed beforehand: setup enables the signed
+repository first, then installs it before running any Nier commands.
+Run setup as the intended desktop user without sudo. The script requests
 sudo separately for repository changes and package installation.
+
+## Deploy desktop configuration files
+
+Run `./deploy.sh` as the desktop user without sudo to install Hyprland bindings,
+the Herdr nier theme, and `omarchy-nvim/lua/plugins/nushell.lua`. The Nushell
+file is installed to `${XDG_CONFIG_HOME:-$HOME/.config}/nvim/lua/plugins/nushell.lua`
+and preserves the rest of Omarchy's LazyVim configuration and theme integration.
+Changed files receive dated backups; identical files are left alone.
+
+Deployment also installs `lua/config/nier-indentation.lua` and adds its
+`require` line once to Neovim's `lua/config/options.lua`, preserving existing
+settings. It enables spaces with `shiftwidth`, `tabstop`, and `softtabstop`
+set to four. Filetype settings, EditorConfig, and formatters can override these
+defaults. The complete configuration in `nvim/` already uses the same values.
+
+The indentation module also replaces `smartindent` with brace-aware `cindent`
+for filetypes that have no language-specific `indentexpr` (including PowerShell).
+This aligns auto-paired closing braces with their opening statements while
+preserving language-specific indentation engines for other filetypes.
+
+`after/ftplugin/ps1.lua` sets PowerShell's comment markers to `#` and `<# ... #>`.
+This prevents automatic comment continuation from repeating the `%` alias for
+`ForEach-Object` when pressing Enter inside `% { ... }`.
+
+`lua/plugins/formatting.lua` configures Conform to use `shfmt` for shell files
+(`sh` and `bash` filetypes), passing `-i 4` explicitly for four-space indentation.
+This overrides shfmt's automatic EditorConfig formatting settings. Install `shfmt` separately
+(`setup.sh` includes it). This does not enable automatic formatting; use
+LazyVim's manual format action when autoformat is disabled.
+
+Nushell (`nu`) buffers use `nufmt`, the separate Nushell formatter. Install
+`nufmt` and make it available on PATH; installing `nu` alone does not supply it.
+See https://github.com/nushell/nufmt for installation and `nufmt.nuon`
+configuration (its default indentation is four spaces). Deployment configures
+the formatter but does not install the executable.
+
+Nushell support enables the `nu` Tree-sitter parser and the language server
+built into `nu` (`nu --lsp`), without installing it through Mason. Nushell must
+already be installed (`setup.sh` includes it). Restart Neovim after deployment;
+LazyVim installs the parser on demand. This file is for Omarchy's LazyVim setup;
+the separate complete configuration deployed by `apply-config.sh` already has
+its own Nushell support.
 
 ## Install Bash completion
 
@@ -52,26 +96,35 @@ fails before trust or configuration changes. Key rotation requires updating the
 pinned fingerprint after verifying the replacement key through the administrator.
 
 After enabling the repository, Omarchy systems run `omarchy update -y` through
-the canonical update flow (snapshots, keyrings, migrations and boot checks), then
-`sudo pacman -S --needed nier/neovim-nightly nier/powershell extra/nushell`.
+the canonical update flow (snapshots, keyrings, migrations and boot checks).
 Setup initializes Omarchy's packaged environment bootstrap for SSH/noninteractive
 invocations. It never bypasses Omarchy 4.5's direct-full-upgrade guard.
-Plain Arch systems use `sudo pacman -Syu --needed` with the same package targets.
-This performs a full system upgrade while explicitly installing nightly from
-the Nier repository, PowerShell from Nier, and Nushell from Arch's `extra`
-repository. PowerShell exposes `pwsh`; Nushell exposes `nu`. This does not
+Setup then calls `omarchy pkg add "${pacman_packages[@]}"`. The helper manages
+sudo, skips installation when all targets are already installed, and verifies
+each package afterward. Names are unqualified because the helper checks them
+with `pacman -Q`.
+Plain Arch systems use `sudo pacman -Syu --needed "${pacman_packages[@]}"`.
+
+The explicit array contains `blesh`, `neovim-nightly`, `nier-desktop`,
+`nier-monitor-arrangement`, `nier-workspaces-dropdown`, `onedrive-quickshell`,
+`powershell`, `remote-desktop-manager`, `teams-for-linux`, and `nushell`.
+`onedrive-abraunegg` is omitted as a direct target: pacman installs it as a
+dependency of `onedrive-quickshell`. Update this array to change the selected
+packages; setup no longer discovers targets from the repository database.
+Nushell comes from Arch's `extra` repository. PowerShell exposes `pwsh`;
+Nushell exposes `nu`. This does not
 change the user's login shell or install PowerShell Editor Services.
-The nightly package provides and conflicts with `neovim`;
-confirm pacman's prompt to remove the stable package in the same transaction.
+The nightly package provides and conflicts with `neovim`; pacman handles its
+replacement in the same package transaction.
 Nightly recipe revision 7 or newer provides its actual Neovim API version,
 satisfying Omarchy 4.5's `omarchy-nvim` versioned dependency.
 Stable Neovim is never uninstalled in a separate step. If nightly is unavailable
 or the transaction fails, setup stops before applying shell configuration.
-Repeated runs skip reinstalling an up-to-date nightly package (`--needed`),
-while still checking for system upgrades. Pacman's confirmation prompts remain
-enabled. Publish `neovim-nightly` and `powershell` in the selected repository
-before running setup. `--needed` also skips up-to-date PowerShell and Nushell
-packages.
+Repeated runs skip reinstalling up-to-date packages while still checking for
+system upgrades. Omarchy's installer uses `--noconfirm --needed`; the plain Arch
+path retains pacman's confirmation prompts. The selected repository must
+publish the Nier packages listed in the array, including `nier-desktop` for the
+final shell setup step.
 Hyprland loader setup is handled by `nier-desktop`'s package install/upgrade
 scriptlet rather than this script. See the
 [desktop tooling guide](../nier-desktop/README.md#hyprland-configuration).
@@ -106,8 +159,10 @@ a disposable Arch container on VM 107 for key trust, required signatures,
 replacement of stale repository configuration, backups, repeated runs, URL
 changes, wrong-key rejection, database tampering, and unreachable-default behavior.
 No client host or Omarchy VM configuration was changed during these tests.
-`tests/setup-packages.sh` verifies package installation, selected removals,
-preservation of unrelated apps, repeat runs, and failure propagation before shell
+`tests/setup-packages.sh` verifies the explicit package array (without the
+OneDrive dependency as a direct target), Omarchy installer routing, the plain
+Arch fallback, selected removals, preservation of unrelated apps,
+repeat runs, and failure propagation before shell
 application with mocked commands. Hyprland package integration has separate
 real pacman tests in the desktop project's disposable Arch container; the full
 setup script was not rerun on VM106 for this change.
